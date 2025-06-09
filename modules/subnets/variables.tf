@@ -1,0 +1,6 @@
+variable "region" {
+  
+}
+variable "ne" {
+  
+}
