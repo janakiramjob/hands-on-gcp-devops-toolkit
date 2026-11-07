@@ -1,3 +1,3 @@
-output "vpc_id" {
- value = google_compute_network.vpc.id 
+output "rule_names" {
+  value = [for r in google_compute_firewall.rule : r.name]
 }
