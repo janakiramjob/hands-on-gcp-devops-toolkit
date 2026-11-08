@@ -13,9 +13,10 @@ variable "subnet_id" {
 variable "nodes" {
   description = "Map of node name => { role, internal_ip, zone (optional) }."
   type = map(object({
-    role        = string
-    internal_ip = string
-    zone        = optional(string) # defaults to var.zone
+    role         = string
+    internal_ip  = string
+    zone         = optional(string) # defaults to var.zone
+    machine_type = optional(string) # defaults to var.machine_type
   }))
 }
 

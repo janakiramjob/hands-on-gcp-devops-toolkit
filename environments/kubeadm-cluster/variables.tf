@@ -19,14 +19,27 @@ variable "cluster_name" {
 }
 
 variable "machine_type" {
-  description = "2 vCPU / 4 GB. e2-medium is the cheapest type that comfortably meets kubeadm's 2 CPU minimum."
+  description = "Worker machine type: 2 vCPU / 8 GB, non-shared core."
+  type        = string
+  default     = "e2-standard-2"
+}
+
+variable "control_plane_machine_type" {
+  description = "Control plane machine type: 2 vCPU / 4 GB (meets kubeadm's 2 CPU minimum)."
   type        = string
   default     = "e2-medium"
 }
 
+variable "state_bucket" {
+  description = "GCS bucket holding the Terraform state; node SA gets object read/write on it."
+  type        = string
+  default     = "gcp-s3-bknd-bucket-7568"
+}
+
 variable "disk_size_gb" {
-  type    = number
-  default = 30
+  description = "Boot disk size. Persistent data lives on external PD volumes via the CSI driver."
+  type        = number
+  default     = 20
 }
 
 variable "image" {

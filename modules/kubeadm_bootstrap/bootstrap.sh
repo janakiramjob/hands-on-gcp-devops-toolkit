@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 : "${PROJECT_ID:?}" "${ZONE:?}" "${CONTROL_PLANE:?}" "${WORKERS:?}" "${NODE_IPS:?}"
-: "${INSTALL_SCRIPT_PATH:?}" "${POD_CIDR:?}" "${SERVICE_CIDR:?}" "${CALICO_VERSION:?}"
+: "${ALIASES_FILE:?}" "${INSTALL_SCRIPT_PATH:?}" "${POD_CIDR:?}" "${SERVICE_CIDR:?}" "${CALICO_VERSION:?}"
 
 ALL_NODES="${CONTROL_PLANE} ${WORKERS}"
 CP_IP=""
@@ -125,4 +125,52 @@ for i in $(seq 1 40); do
   sleep 15
 done
 rssh "${CONTROL_PLANE}" "kubectl get nodes -o wide"
+
+# ---------------------------------------------------------------- 7. helm + PD CSI
+log "Installing Helm ${HELM_VERSION} on ${CONTROL_PLANE}"
+rssh "${CONTROL_PLANE}" "
+  if command -v helm >/dev/null 2>&1; then
+    echo \"helm already installed: \$(helm version --short)\"
+  else
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | DESIRED_VERSION='${HELM_VERSION}' bash
+  fi
+  helm version --short
+"
+
+# ---------------------------------------------------------------- 8. aliases
+log "Installing kubectl aliases on ${CONTROL_PLANE}"
+rscp "${ALIASES_FILE}" "${CONTROL_PLANE}:/tmp/kubectl-aliases.sh"
+rssh "${CONTROL_PLANE}" "
+  install -m 644 /tmp/kubectl-aliases.sh \$HOME/.kubectl-aliases.sh
+  touch \$HOME/.bash_aliases
+  grep -qF '.kubectl-aliases.sh' \$HOME/.bash_aliases || echo '[ -f \$HOME/.kubectl-aliases.sh ] && . \$HOME/.kubectl-aliases.sh' >> \$HOME/.bash_aliases
+  # vim defaults that make editing YAML painless
+  grep -qs 'k8s-yaml' \$HOME/.vimrc || printf '\" k8s-yaml\nset expandtab tabstop=2 shiftwidth=2 softtabstop=2 autoindent\n' >> \$HOME/.vimrc
+"
+
+# noauth overlay: the driver uses the node service account via the metadata server
+# (needs roles/compute.storageAdmin + serviceAccountUser, granted by Terraform).
+log "Installing GCP PD CSI driver ${PD_CSI_VERSION}"
+rssh "${CONTROL_PLANE}" "
+  set -e
+  rm -rf /tmp/gcp-pd-csi && git clone -q --depth 1 --branch '${PD_CSI_VERSION}' https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver /tmp/gcp-pd-csi
+  kubectl apply -k /tmp/gcp-pd-csi/deploy/kubernetes/overlays/noauth
+  kubectl -n gce-pd-csi-driver rollout status deploy/csi-gce-pd-controller --timeout=300s
+  kubectl -n gce-pd-csi-driver rollout status ds/csi-gce-pd-node --timeout=300s
+  cat <<'EOF' | kubectl apply -f -
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: pd-balanced
+  annotations:
+    storageclass.kubernetes.io/is-default-class: \"true\"
+provisioner: pd.csi.storage.gke.io
+parameters:
+  type: pd-balanced
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+EOF
+  kubectl get storageclass
+"
 log "Cluster ready. Connect: gcloud compute ssh ${CONTROL_PLANE} --zone ${ZONE} --project ${PROJECT_ID} --tunnel-through-iap"

@@ -51,3 +51,15 @@ variable "service_cidr" {
 variable "calico_version" {
   type = string
 }
+
+variable "helm_version" {
+  description = "Helm 3 version installed on the control plane."
+  type        = string
+  default     = "v3.22.1"
+}
+
+variable "pd_csi_version" {
+  description = "gcp-compute-persistent-disk-csi-driver git tag (deployed with the noauth overlay, i.e. node service account credentials)."
+  type        = string
+  default     = "v1.28.1"
+}

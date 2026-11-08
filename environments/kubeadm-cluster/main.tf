@@ -6,7 +6,7 @@ locals {
   )
 
   nodes = {
-    controlplane = { role = "control-plane", internal_ip = cidrhost(var.subnet_cidr, 10) }
+    controlplane = { role = "control-plane", internal_ip = cidrhost(var.subnet_cidr, 10), machine_type = var.control_plane_machine_type }
     worker1      = { role = "worker", internal_ip = cidrhost(var.subnet_cidr, 11) }
     worker2      = { role = "worker", internal_ip = cidrhost(var.subnet_cidr, 12) }
     # Extra workers spread across other zones of the same region
@@ -78,7 +78,23 @@ module "node_sa" {
   roles = [
     "roles/logging.logWriter",
     "roles/monitoring.metricWriter",
+    # GCP PD CSI driver (runs on the nodes) creates/attaches/deletes persistent disks
+    "roles/compute.storageAdmin",
   ]
+}
+
+# PD CSI needs to act as the node SA when attaching disks to instances
+resource "google_service_account_iam_member" "node_sa_self_user" {
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${module.node_sa.email}"
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${module.node_sa.email}"
+}
+
+# Upload/download access to the same bucket that holds the Terraform state
+resource "google_storage_bucket_iam_member" "node_bucket_access" {
+  bucket = var.state_bucket
+  role   = "roles/storage.objectUser"
+  member = "serviceAccount:${module.node_sa.email}"
 }
 
 module "compute" {
