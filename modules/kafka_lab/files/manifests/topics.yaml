@@ -1,0 +1,29 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: orders
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: demo
+spec:
+  partitions: 6          # max 6 useful consumers => KEDA maxReplicaCount 6
+  replicas: 1
+  config:
+    retention.ms: 3600000        # 1h
+    retention.bytes: 134217728   # 128MiB per partition
+    segment.bytes: 33554432
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: demo
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    retention.ms: 3600000
+    retention.bytes: 67108864
+    segment.bytes: 33554432

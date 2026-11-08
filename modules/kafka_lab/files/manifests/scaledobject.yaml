@@ -1,0 +1,33 @@
+# Each consumer handles ~5 msg/s (200ms delay). lagThreshold=20 => roughly one
+# replica per 20 messages of lag, capped at 6 (= partitions).
+#  - activationLagThreshold 0: any lag > 0 wakes the consumer from 0 -> 1
+#    (KEDA activates; the HPA then handles 1 -> N using lagThreshold)
+#  - cooldownPeriod 60s: how long lag must stay 0 before N -> 0
+#  - offsetResetPolicy earliest: a group with no committed offsets yet counts the
+#    whole topic as lag, so the very first burst still wakes the consumer
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: consumer-scaler
+  namespace: demo
+spec:
+  scaleTargetRef:
+    name: consumer
+  pollingInterval: 10
+  cooldownPeriod: 60
+  minReplicaCount: 0
+  maxReplicaCount: 6
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 30
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: demo-kafka-bootstrap.kafka.svc:9092
+        consumerGroup: orders-consumer
+        topic: orders
+        lagThreshold: "20"
+        activationLagThreshold: "0"
+        offsetResetPolicy: earliest

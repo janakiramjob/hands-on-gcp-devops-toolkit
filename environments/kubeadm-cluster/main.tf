@@ -16,7 +16,7 @@ locals {
 }
 
 resource "google_project_service" "apis" {
-  for_each = toset(["compute.googleapis.com", "iap.googleapis.com"])
+  for_each = toset(["compute.googleapis.com", "iap.googleapis.com", "artifactregistry.googleapis.com"])
 
   service            = each.value
   disable_on_destroy = false
@@ -131,4 +131,36 @@ module "kubeadm_bootstrap" {
   calico_version      = var.calico_version
 
   depends_on = [module.nat, module.firewall]
+}
+
+# ---------------------------------------------------------------- Kafka/KEDA lab
+resource "google_artifact_registry_repository" "apps" {
+  repository_id = var.registry_repository
+  location      = var.region
+  format        = "DOCKER"
+  description   = "Images for the Kafka + KEDA demo"
+
+  depends_on = [google_project_service.apis]
+}
+
+# Nodes pull via the in-cluster token refresher (node SA, no keys)
+resource "google_artifact_registry_repository_iam_member" "node_reader" {
+  project    = var.project_id
+  location   = google_artifact_registry_repository.apps.location
+  repository = google_artifact_registry_repository.apps.repository_id
+  role       = "roles/artifactregistry.reader"
+  member     = "serviceAccount:${module.node_sa.email}"
+}
+
+module "kafka_lab" {
+  source = "../../modules/kafka_lab"
+
+  project_id          = var.project_id
+  zone                = var.zone
+  region              = var.region
+  bootstrap_id        = module.kubeadm_bootstrap.bootstrap_id
+  registry_repository = google_artifact_registry_repository.apps.repository_id
+  build_app_image     = var.build_app_image
+
+  depends_on = [google_artifact_registry_repository_iam_member.node_reader]
 }

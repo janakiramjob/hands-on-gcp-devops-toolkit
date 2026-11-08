@@ -1,0 +1,43 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kafka-broker
+  namespace: kafka
+spec:
+  selector:
+    matchLabels:
+      strimzi.io/name: demo-kafka
+  podMetricsEndpoints:
+    - port: tcp-prometheus
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kafka-exporter
+  namespace: kafka
+spec:
+  selector:
+    matchLabels:
+      strimzi.io/name: demo-kafka-exporter
+  podMetricsEndpoints:
+    - port: tcp-prometheus
+      path: /metrics
+---
+# metrics-server serves /metrics on its TLS port and requires a bearer token
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: metrics-server
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      k8s-app: metrics-server
+  endpoints:
+    - port: https
+      scheme: https
+      path: /metrics
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tlsConfig:
+        insecureSkipVerify: true

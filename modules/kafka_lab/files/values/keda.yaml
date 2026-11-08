@@ -1,0 +1,19 @@
+resources:
+  operator:
+    requests: { cpu: 50m, memory: 100Mi }
+    limits:   { cpu: 500m, memory: 300Mi }
+  metricServer:
+    requests: { cpu: 50m, memory: 100Mi }
+    limits:   { cpu: 500m, memory: 300Mi }
+  webhooks:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits:   { cpu: 200m, memory: 150Mi }
+prometheus:
+  operator:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+  metricServer:
+    enabled: true
+    serviceMonitor:
+      enabled: true

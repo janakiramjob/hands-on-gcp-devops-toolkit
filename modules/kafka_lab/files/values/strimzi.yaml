@@ -1,0 +1,6 @@
+replicas: 1
+watchAnyNamespace: false
+logLevel: INFO
+resources:
+  requests: { cpu: 200m, memory: 384Mi }
+  limits:   { cpu: 500m, memory: 512Mi }

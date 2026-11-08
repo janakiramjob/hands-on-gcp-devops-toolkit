@@ -1,0 +1,27 @@
+# Sends a burst of 3000 keyed messages to "orders" and exits.
+# Run:  kubectl -n demo delete job orders-burst --ignore-not-found; kubectl apply -f loadtest-job.rendered.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: orders-burst
+  namespace: demo
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ar-pull
+      containers:
+        - name: producer
+          image: @@APP_IMAGE@@
+          env:
+            - { name: MODE, value: producer }
+            - { name: KAFKA_BOOTSTRAP, value: "demo-kafka-bootstrap.kafka.svc:9092" }
+            - { name: TOPIC, value: orders }
+            - { name: BURST, value: "3000" }
+            - { name: RATE, value: "0" }
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits:   { cpu: 300m, memory: 128Mi }

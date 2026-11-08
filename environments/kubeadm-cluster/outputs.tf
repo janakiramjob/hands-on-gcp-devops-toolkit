@@ -21,3 +21,11 @@ output "ssh_worker3" {
 output "ssh_worker4" {
   value = "gcloud compute ssh worker4 --zone ${var.worker4_zone} --project ${var.project_id} --tunnel-through-iap"
 }
+
+output "app_image" {
+  value = module.kafka_lab.app_image
+}
+
+output "lab_cheatsheet" {
+  value = "gcloud compute ssh controlplane --zone ${var.zone} --project ${var.project_id} --tunnel-through-iap  # then: cat ~/kafka-lab/CHEATSHEET.md"
+}

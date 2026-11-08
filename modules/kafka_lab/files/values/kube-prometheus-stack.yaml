@@ -1,0 +1,65 @@
+# Lab-sized: no Alertmanager, no scrape targets that kubeadm doesn't expose.
+alertmanager:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+prometheusOperator:
+  resources:
+    requests: { cpu: 50m, memory: 100Mi }
+    limits:   { cpu: 200m, memory: 200Mi }
+
+prometheus:
+  prometheusSpec:
+    scrapeInterval: 30s
+    retention: 2d
+    retentionSize: 3GB        # size cap protects the volume; time cap keeps it short
+    # pick up PodMonitors/ServiceMonitors/rules from every namespace
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+      limits:   { cpu: 700m, memory: 1Gi }
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: @@PROMETHEUS_VOLUME_SIZE@@
+
+grafana:
+  # login: admin / prom-operator (chart default). Reach it with kubectl port-forward.
+  deploymentStrategy:
+    type: Recreate            # RWO volume: old pod must release it first
+  persistence:
+    enabled: true
+    type: pvc
+    accessModes: ["ReadWriteOnce"]
+    size: @@GRAFANA_VOLUME_SIZE@@
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 300m, memory: 256Mi }
+  sidecar:
+    resources:
+      requests: { cpu: 10m, memory: 50Mi }
+      limits:   { cpu: 100m, memory: 100Mi }
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits:   { cpu: 100m, memory: 128Mi }
+
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 10m, memory: 20Mi }
+    limits:   { cpu: 100m, memory: 64Mi }

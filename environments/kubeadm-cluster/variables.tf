@@ -91,3 +91,15 @@ variable "worker4_zone" {
   type        = string
   default     = "us-east1-d"
 }
+
+variable "registry_repository" {
+  description = "Artifact Registry Docker repo for the demo app image."
+  type        = string
+  default     = "kafka-demo"
+}
+
+variable "build_app_image" {
+  description = "Build/push the demo app image from this machine (needs docker + gcloud). Set false if already pushed."
+  type        = bool
+  default     = true
+}
