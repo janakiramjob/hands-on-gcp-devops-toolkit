@@ -14,7 +14,7 @@ resource "google_compute_instance" "node" {
   for_each = var.nodes
 
   name         = each.key
-  zone         = var.zone
+  zone         = coalesce(each.value.zone, var.zone)
   machine_type = var.machine_type
   tags         = var.network_tags
   labels       = merge(var.labels, { role = each.value.role })

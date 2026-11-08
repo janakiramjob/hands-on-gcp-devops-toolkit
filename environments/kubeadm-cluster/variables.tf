@@ -66,3 +66,15 @@ variable "install_script_path" {
   type        = string
   default     = ""
 }
+
+variable "worker3_zone" {
+  description = "Zone for worker3 (must be in var.region and differ from var.zone)."
+  type        = string
+  default     = "us-east1-c"
+}
+
+variable "worker4_zone" {
+  description = "Zone for worker4 (must be in var.region and differ from var.zone)."
+  type        = string
+  default     = "us-east1-d"
+}

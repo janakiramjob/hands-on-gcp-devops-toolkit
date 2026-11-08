@@ -6,6 +6,12 @@ variable "zone" {
   type = string
 }
 
+variable "node_zones" {
+  description = "Map of node name => zone. Nodes missing here use var.zone."
+  type        = map(string)
+  default     = {}
+}
+
 variable "control_plane" {
   type = string
 }

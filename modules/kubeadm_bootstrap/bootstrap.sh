@@ -13,13 +13,25 @@ for kv in ${NODE_IPS}; do [[ "${kv%%=*}" == "${CONTROL_PLANE}" ]] && CP_IP="${kv
 LOGDIR="$(mktemp -d)"
 log() { echo; echo "[$(date '+%T')] $*"; }
 
-SSH_FLAGS=(--project="${PROJECT_ID}" --zone="${ZONE}" --tunnel-through-iap --quiet
-           --strict-host-key-checking=no)
+# zone_of <node>: per-node zone from NODE_ZONES ("name=zone ..."), else ZONE
+zone_of() {
+  local kv
+  for kv in ${NODE_ZONES:-}; do [[ "${kv%%=*}" == "$1" ]] && { echo "${kv#*=}"; return; }; done
+  echo "${ZONE}"
+}
 
 # rssh <node> <command...>   run a command on a node
-rssh() { local n="$1"; shift; gcloud compute ssh "${n}" "${SSH_FLAGS[@]}" --command "$*" -- -o ServerAliveInterval=30; }
+rssh() {
+  local n="$1"; shift
+  gcloud compute ssh "${n}" --project="${PROJECT_ID}" --zone="$(zone_of "${n}")" --tunnel-through-iap --quiet \
+    --strict-host-key-checking=no --command "$*" -- -o ServerAliveInterval=30
+}
 # rscp <local> <node>:<remote>
-rscp() { gcloud compute scp "${SSH_FLAGS[@]}" "$1" "$2"; }
+rscp() {
+  local n="${2%%:*}"
+  gcloud compute scp --project="${PROJECT_ID}" --zone="$(zone_of "${n}")" --tunnel-through-iap --quiet \
+    --strict-host-key-checking=no "$1" "$2"
+}
 
 # ---------------------------------------------------------------- 1. wait
 log "Waiting for SSH over IAP on: ${ALL_NODES}"
@@ -84,7 +96,13 @@ rssh "${CONTROL_PLANE}" "
   CAL=https://raw.githubusercontent.com/projectcalico/calico/${CALICO_VERSION}/manifests
   # operator CRDs are large: create/server-side apply, not client-side apply
   kubectl create -f \$CAL/tigera-operator.yaml 2>&1 || kubectl replace -f \$CAL/tigera-operator.yaml
-  curl -fsSL \$CAL/custom-resources.yaml | sed 's|cidr: 192.168.0.0/16|cidr: ${POD_CIDR}|' | kubectl apply -f -
+  # CRDs need a moment to become Established before the CRs can be applied
+  kubectl wait --for=condition=Established --timeout=120s crd --all
+  curl -fsSL \$CAL/custom-resources.yaml | sed 's|cidr: 192.168.0.0/16|cidr: ${POD_CIDR}|' > /tmp/calico-cr.yaml
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    kubectl apply -f /tmp/calico-cr.yaml && break
+    echo \"custom-resources apply failed (attempt \$i), retrying in 10s\"; sleep 10
+  done
 "
 
 # ---------------------------------------------------------------- 5. join

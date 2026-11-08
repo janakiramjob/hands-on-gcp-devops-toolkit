@@ -9,6 +9,9 @@ locals {
     controlplane = { role = "control-plane", internal_ip = cidrhost(var.subnet_cidr, 10) }
     worker1      = { role = "worker", internal_ip = cidrhost(var.subnet_cidr, 11) }
     worker2      = { role = "worker", internal_ip = cidrhost(var.subnet_cidr, 12) }
+    # Extra workers spread across other zones of the same region
+    worker3 = { role = "worker", internal_ip = cidrhost(var.subnet_cidr, 13), zone = var.worker3_zone }
+    worker4 = { role = "worker", internal_ip = cidrhost(var.subnet_cidr, 14), zone = var.worker4_zone }
   }
 }
 
@@ -101,8 +104,9 @@ module "kubeadm_bootstrap" {
   project_id          = var.project_id
   zone                = var.zone
   control_plane       = "controlplane"
-  workers             = ["worker1", "worker2"]
+  workers             = ["worker1", "worker2", "worker3", "worker4"]
   node_ips            = { for k, v in local.nodes : k => v.internal_ip }
+  node_zones          = { for k, v in local.nodes : k => try(v.zone, var.zone) }
   instance_ids        = module.compute.instance_ids
   install_script_path = local.install_script_path
   k8s_minor           = var.k8s_minor

@@ -9,6 +9,7 @@ resource "terraform_data" "bootstrap" {
     instance_ids   = join(",", var.instance_ids)
     install_script = filesha256(var.install_script_path)
     bootstrap      = filesha256("${path.module}/bootstrap.sh")
+    node_zones     = jsonencode(var.node_zones)
     pod_cidr       = var.pod_cidr
     service_cidr   = var.service_cidr
     calico_version = var.calico_version
@@ -23,6 +24,7 @@ resource "terraform_data" "bootstrap" {
       ZONE                = var.zone
       CONTROL_PLANE       = var.control_plane
       WORKERS             = join(" ", var.workers)
+      NODE_ZONES          = join(" ", [for n, z in var.node_zones : "${n}=${z}"])
       NODE_IPS            = join(" ", [for n, ip in var.node_ips : "${n}=${ip}"])
       INSTALL_SCRIPT_PATH = var.install_script_path
       K8S_MINOR           = var.k8s_minor
