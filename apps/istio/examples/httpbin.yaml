@@ -1,0 +1,51 @@
+# Sample app in a sidecar-injected namespace with mesh-wide mTLS enforced for that namespace.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mesh-demo
+  labels:
+    istio-injection: enabled
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: mesh-demo
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpbin
+  namespace: mesh-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: httpbin }
+  template:
+    metadata:
+      labels: { app: httpbin }
+    spec:
+      containers:
+        - name: httpbin
+          image: kennethreitz/httpbin:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin
+  namespace: mesh-demo
+spec:
+  selector: { app: httpbin }
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---

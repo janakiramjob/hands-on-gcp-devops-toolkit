@@ -1,0 +1,41 @@
+# argo-cd chart 10.18.0 (Argo CD v3.6.1) - small lab sizing
+global:
+  # Keep everything schedulable on small nodes
+  logging:
+    level: info
+
+configs:
+  params:
+    # Serve plain HTTP inside the cluster; use `kubectl port-forward` locally
+    # (put TLS on an ingress/gateway for anything shared).
+    server.insecure: true
+    # Served under /argocd by the shared ingress (apps/ingress.yaml)
+    server.rootpath: /argocd
+    server.basehref: /argocd
+
+# Not needed for a local/admin-password lab; saves two pods
+dex:
+  enabled: false
+notifications:
+  enabled: false
+
+controller:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 768Mi }
+server:
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 256Mi }
+repoServer:
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 384Mi }
+applicationSet:
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { memory: 192Mi }
+redis:
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { memory: 128Mi }

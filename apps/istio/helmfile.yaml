@@ -1,0 +1,54 @@
+# Istio, sidecar mode, plus Kiali, installed as four Helm releases.
+#   helmfile -f apps/istio/helmfile.yaml sync
+#
+#   1. istio-base    : cluster-wide CRDs + RBAC
+#   2. istiod        : the control plane (service discovery, certificates, sidecar injection webhook on :15017)
+#   3. istio-ingress : the ingress gateway = the ONE public load balancer; routes are defined in apps/ingress.yaml
+#   4. kiali         : Istio topology/traffic UI at /kiali (add-on, not included in Istio itself)
+#
+# After installing:  kubectl apply -f apps/istio/monitoring.yaml   (Prometheus scrapes istiod + Envoy; needs apps/monitoring)
+#
+# Enable sidecars per namespace:  kubectl label ns <name> istio-injection=enabled
+repositories:
+  - name: istio
+    url: https://istio-release.storage.googleapis.com/charts
+  - name: kiali
+    url: https://kiali.org/helm-charts
+
+helmDefaults:
+  wait: true
+  timeout: 600
+  createNamespace: true
+
+releases:
+  - name: istio-base
+    namespace: istio-system
+    chart: istio/base
+    version: 1.30.8
+
+  - name: istiod
+    namespace: istio-system
+    chart: istio/istiod
+    version: 1.30.8
+    needs:
+      - istio-system/istio-base
+    values:
+      - values-istiod.yaml
+
+  - name: istio-ingress   # release name -> pod label "istio: ingress", which the Gateway in apps/ingress.yaml selects
+    namespace: istio-ingress
+    chart: istio/gateway
+    version: 1.30.8
+    needs:
+      - istio-system/istiod
+    values:
+      - values-gateway.yaml
+
+  - name: kiali-server
+    namespace: istio-system
+    chart: kiali/kiali-server
+    version: 2.34.1
+    needs:
+      - istio-system/istiod
+    values:
+      - values-kiali.yaml

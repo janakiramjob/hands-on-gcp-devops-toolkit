@@ -1,0 +1,71 @@
+# kube-prometheus-stack 93.3.0 - small lab sizing
+
+alertmanager:
+  enabled: false
+
+# GKE runs the control plane for you; these targets are not reachable and would show as DOWN
+kubeControllerManager: { enabled: false }
+kubeScheduler: { enabled: false }
+kubeEtcd: { enabled: false }
+kubeProxy: { enabled: false }
+coreDns: { enabled: false }
+kubeDns: { enabled: true }   # GKE uses kube-dns
+
+prometheus:
+  prometheusSpec:
+    retention: 2d
+    # Served under /prometheus by the shared ingress, which strips the prefix before forwarding
+    # (apps/ingress.yaml) -> external URL has the prefix, the route prefix stays "/".
+    externalUrl: /prometheus/
+    routePrefix: /
+    # Lets the OTel agent push metrics: http://kube-prometheus-stack-prometheus.monitoring:9090/api/v1/write
+    enableRemoteWriteReceiver: true
+    # Pick up ServiceMonitors/PodMonitors/rules from ALL namespaces (KEDA, Istio, OTel, ...), not only this chart's
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    resources:
+      requests: { cpu: 200m, memory: 700Mi }
+      limits: { memory: 1500Mi }
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi   # GKE default StorageClass (pd-balanced)
+
+prometheusOperator:
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 200Mi }
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 20m, memory: 48Mi }
+    limits: { memory: 150Mi }
+
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 20m, memory: 24Mi }
+    limits: { memory: 64Mi }
+
+grafana:
+  enabled: true
+  # adminPassword comes from values-secrets.yaml.gotmpl
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 384Mi }
+  grafana.ini:
+    server:
+      # Served under /grafana by the shared ingress (no prefix stripping: Grafana handles the prefix itself)
+      root_url: "%(protocol)s://%(domain)s/grafana/"
+      serve_from_sub_path: true
+  # Prometheus is provisioned by the chart; Tempo (apps/monitoring/tempo.yaml) is added here for OTel traces
+  additionalDataSources:
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo.monitoring.svc.cluster.local:3200

@@ -1,0 +1,58 @@
+# opentelemetry-collector chart 0.178.3 - node agent (DaemonSet)
+# Receives OTLP from apps on :4317 (gRPC) / :4318 (HTTP), plus node, kubelet and container-log telemetry.
+#   metrics -> Prometheus (remote write)    traces -> Tempo    logs -> this collector's log (debug exporter)
+# Both backends come from apps/monitoring.
+fullnameOverride: otel-agent
+mode: daemonset
+
+image:
+  # The chart requires an explicit image. "contrib" has every receiver/exporter used below
+  # (prometheusremotewrite, kubeletstats, filelog, ...) and needs its matching binary name.
+  repository: otel/opentelemetry-collector-contrib
+command:
+  name: otelcol-contrib
+
+presets:
+  kubernetesAttributes:
+    enabled: true
+  kubeletMetrics:
+    enabled: true
+  hostMetrics:
+    enabled: true
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits: { memory: 256Mi }
+
+# Cluster-internal OTLP endpoint: otel-agent.observability.svc:4317
+service:
+  enabled: true
+ports:
+  jaeger-compact: { enabled: false }
+  jaeger-thrift: { enabled: false }
+  jaeger-grpc: { enabled: false }
+  zipkin: { enabled: false }
+
+config:
+  exporters:
+    debug:
+      verbosity: basic
+    prometheusremotewrite:
+      endpoint: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090/api/v1/write
+      resource_to_telemetry_conversion:
+        enabled: true      # keep k8s.pod.name, k8s.namespace.name, ... as metric labels
+    otlp/tempo:
+      endpoint: tempo.monitoring.svc.cluster.local:4317
+      tls:
+        insecure: true
+  service:
+    pipelines:
+      traces:
+        exporters: [otlp/tempo, debug]
+      metrics:
+        exporters: [prometheusremotewrite]
+      logs:
+        exporters: [debug]

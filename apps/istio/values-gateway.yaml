@@ -1,0 +1,14 @@
+# istio gateway chart 1.30.8 - ingress gateway (creates a regional external passthrough LB on GCP)
+service:
+  type: LoadBalancer
+  # The shared ingress (apps/ingress.yaml) is plain HTTP; restrict who can reach it:
+  # loadBalancerSourceRanges: ["<your-public-ip>/32"]
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+autoscaling:
+  enabled: false
+replicaCount: 1

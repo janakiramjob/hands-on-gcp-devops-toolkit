@@ -1,0 +1,31 @@
+# Karpenter (cloudpilot-ai/karpenter-provider-gcp) for GKE.
+#   helmfile -f apps/karpenter/helmfile.yaml sync
+#   kubectl apply -f apps/karpenter/gcenodeclass.yaml -f apps/karpenter/nodepool.yaml
+#
+# What gets installed:
+#   1. karpenter-crd : the CRDs (NodePool, NodeClaim, GCENodeClass, ...), as a separate chart so they upgrade with `helm upgrade`
+#   2. karpenter     : the controller, 1 replica on the system node pool; it calls the GCP APIs through Workload Identity
+repositories:
+  - name: karpenter-provider-gcp
+    url: https://cloudpilot-ai.github.io/karpenter-provider-gcp
+
+helmDefaults:
+  wait: true
+  timeout: 600
+  createNamespace: true
+
+releases:
+  - name: karpenter-crd
+    namespace: karpenter-system
+    chart: karpenter-provider-gcp/karpenter-crd
+    version: 0.8.0
+
+  - name: karpenter
+    namespace: karpenter-system
+    chart: karpenter-provider-gcp/karpenter
+    version: 0.8.0
+    needs:
+      - karpenter-system/karpenter-crd
+    values:
+      - values.yaml                  # static: replicas, resources, no JSON keys
+      - values-cluster.yaml.gotmpl   # cluster/project specifics (defaults = terraform defaults)

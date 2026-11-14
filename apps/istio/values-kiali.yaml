@@ -1,0 +1,33 @@
+# kiali-server chart 2.34.1 - Istio topology/traffic UI.
+# Kiali is NOT part of the Istio install; it is an add-on that reads Istio config from the API
+# and traffic metrics from Prometheus (apps/monitoring + istio/monitoring.yaml).
+istio_namespace: istio-system
+
+deployment:
+  replicas: 1
+  # Read-only UI: it is reachable through the public load balancer
+  view_only_mode: true
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 384Mi }
+
+auth:
+  # No login screen (the page is read-only). Restrict the load balancer by IP, see istio/values-gateway.yaml.
+  strategy: anonymous
+
+server:
+  # Served under /kiali by the shared ingress (apps/ingress.yaml)
+  web_root: /kiali
+
+external_services:
+  prometheus:
+    url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+  grafana:
+    enabled: true
+    internal_url: http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80
+    external_url: /grafana
+  tracing:
+    enabled: true
+    provider: tempo
+    internal_url: http://tempo.monitoring.svc.cluster.local:3200
+    use_grpc: false

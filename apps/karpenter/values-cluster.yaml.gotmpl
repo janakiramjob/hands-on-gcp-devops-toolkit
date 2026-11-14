@@ -1,0 +1,18 @@
+{{- /* Defaults match environments/gke-cluster. Override with env vars: PROJECT_ID, CLUSTER_NAME, CLUSTER_ZONE */ -}}
+{{- $project := env "PROJECT_ID" | default "cka-comingsoon" -}}
+{{- $cluster := env "CLUSTER_NAME" | default "gke-lab" -}}
+{{- $zone := env "CLUSTER_ZONE" | default "us-east1-b" -}}
+controller:
+  settings:
+    projectID: {{ $project }}
+    clusterName: {{ $cluster }}
+    # zonal cluster -> the zone
+    clusterLocation: {{ $zone }}
+    # service account attached to every node Karpenter creates (terraform: module.node_sa)
+    defaultNodepoolServiceAccount: {{ $cluster }}-node@{{ $project }}.iam.gserviceaccount.com
+    # Karpenter copies kubelet bootstrap settings from this GKE node pool (terraform: <cluster>-system)
+    defaultNodePoolTemplateName: {{ $cluster }}-system
+serviceAccount:
+  annotations:
+    # Workload Identity: the Kubernetes SA acts as this Google SA (terraform: google_service_account.karpenter_controller)
+    iam.gke.io/gcp-service-account: {{ $cluster }}-karpenter@{{ $project }}.iam.gserviceaccount.com

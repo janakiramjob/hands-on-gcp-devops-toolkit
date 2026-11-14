@@ -1,0 +1,22 @@
+# KEDA chart 2.21.0 - small lab sizing
+resources:
+  operator:
+    requests: { cpu: 50m, memory: 100Mi }
+    limits: { memory: 300Mi }
+  metricServer:
+    requests: { cpu: 50m, memory: 100Mi }
+    limits: { memory: 300Mi }
+  webhooks:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 150Mi }
+
+# Requires apps/monitoring (Prometheus Operator CRDs) to be installed first
+prometheus:
+  operator:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+  metricServer:
+    enabled: true
+    serviceMonitor:
+      enabled: true

@@ -1,0 +1,20 @@
+# KEDA - event-driven autoscaling (ScaledObject -> HPA).
+#   helmfile -f apps/keda/helmfile.yaml sync
+#   kubectl apply -f apps/keda/examples/cpu-scaledobject.yaml     # optional demo
+# Install apps/monitoring first: values.yaml enables ServiceMonitors for KEDA's metrics.
+repositories:
+  - name: kedacore
+    url: https://kedacore.github.io/charts
+
+helmDefaults:
+  wait: true
+  timeout: 300
+  createNamespace: true
+
+releases:
+  - name: keda
+    namespace: keda
+    chart: kedacore/keda
+    version: 2.21.0
+    values:
+      - values.yaml

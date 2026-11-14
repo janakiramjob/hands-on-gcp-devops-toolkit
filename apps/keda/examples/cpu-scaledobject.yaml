@@ -1,0 +1,55 @@
+# Minimal KEDA example: scale a Deployment on CPU (min 1 -> max 5).
+# Generate load, e.g.:
+#   kubectl -n keda-demo run load --rm -it --image=busybox --restart=Never -- \
+#     sh -c 'while true; do wget -q -O- http://web; done'
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keda-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: keda-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.27
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits: { cpu: 200m, memory: 64Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: keda-demo
+spec:
+  selector: { app: web }
+  ports:
+    - port: 80
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: web
+  namespace: keda-demo
+spec:
+  scaleTargetRef:
+    name: web
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  cooldownPeriod: 60
+  triggers:
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "50"

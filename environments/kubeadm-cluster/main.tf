@@ -10,8 +10,8 @@ locals {
     worker1      = { role = "worker", internal_ip = cidrhost(var.subnet_cidr, 11) }
     worker2      = { role = "worker", internal_ip = cidrhost(var.subnet_cidr, 12) }
     # Extra workers spread across other zones of the same region
-    worker3 = { role = "worker", internal_ip = cidrhost(var.subnet_cidr, 13), zone = var.worker3_zone }
-    worker4 = { role = "worker", internal_ip = cidrhost(var.subnet_cidr, 14), zone = var.worker4_zone }
+    #worker3 = { role = "worker", internal_ip = cidrhost(var.subnet_cidr, 13), zone = var.worker3_zone }
+    #worker4 = { role = "worker", internal_ip = cidrhost(var.subnet_cidr, 14), zone = var.worker4_zone }
   }
 }
 

@@ -1,0 +1,22 @@
+# Static Helm values for karpenter-provider-gcp (chart 0.8.0).
+# Cluster-specific settings (project, cluster, location, service accounts)
+# are injected by install.sh from `terraform output`.
+controller:
+  # Lab-sized: one replica on the small system pool.
+  # For HA use 2 (the chart's anti-affinity then needs 2 system nodes with ~500m free CPU each).
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 300Mi
+  # The chart default (gmp-critical) only exists when GKE managed Prometheus is on.
+  priorityClassName: system-cluster-critical
+
+# A single replica with minAvailable=1 would block node drains / upgrades.
+podDisruptionBudget:
+  minAvailable: null
+  maxUnavailable: 1
+
+# Workload Identity is used (no JSON keys)
+credentials:
+  enabled: false

@@ -1,0 +1,20 @@
+# Kyverno - admission policy engine.
+#   helmfile -f apps/kyverno/helmfile.yaml sync
+#   kubectl apply -f apps/kyverno/policies/        # starter policies, audit mode only
+#   kubectl get policyreport -A                    # findings
+repositories:
+  - name: kyverno
+    url: https://kyverno.github.io/kyverno
+
+helmDefaults:
+  wait: true
+  timeout: 600
+  createNamespace: true
+
+releases:
+  - name: kyverno
+    namespace: kyverno
+    chart: kyverno/kyverno
+    version: 3.10.0        # Kyverno v1.20.0
+    values:
+      - values.yaml

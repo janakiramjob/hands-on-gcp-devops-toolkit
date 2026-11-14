@@ -1,0 +1,23 @@
+# Argo CD - GitOps controller.
+#   helmfile -f apps/argocd/helmfile.yaml sync
+#   kubectl apply -f apps/argocd/examples/guestbook-app.yaml      # optional demo
+#
+# UI: through the shared ingress at http://<LB-IP>/argocd  (apps/ingress.yaml), or
+#   kubectl -n argocd port-forward svc/argocd-server 8080:80   -> http://localhost:8080/argocd
+# Login: admin / $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
+repositories:
+  - name: argo
+    url: https://argoproj.github.io/argo-helm
+
+helmDefaults:
+  wait: true
+  timeout: 600
+  createNamespace: true
+
+releases:
+  - name: argocd
+    namespace: argocd
+    chart: argo/argo-cd
+    version: 10.18.0       # Argo CD v3.6.1
+    values:
+      - values.yaml

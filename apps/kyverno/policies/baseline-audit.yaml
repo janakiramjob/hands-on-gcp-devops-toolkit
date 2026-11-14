@@ -1,0 +1,73 @@
+# Starter policies, all in AUDIT mode: violations are recorded in PolicyReports
+# but nothing is blocked. Change validationActions to [Deny] once you trust them.
+#   kubectl get policyreport -A        kubectl get validatingpolicy
+# Uses the CEL-based ValidatingPolicy API (policies.kyverno.io), the successor of the deprecated ClusterPolicy.
+apiVersion: policies.kyverno.io/v1beta1
+kind: ValidatingPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  validationActions: [Audit]
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  matchConditions:
+    - name: skip-system-namespaces
+      expression: >-
+        !(object.metadata.namespace in ['kube-system', 'kube-public', 'kube-node-lease', 'gke-managed-system',
+        'kyverno', 'karpenter-system', 'istio-system', 'argocd', 'keda', 'observability'])
+  validations:
+    - message: "Images must use an explicit, non-'latest' tag or a digest."
+      expression: >-
+        object.spec.containers.all(c,
+          c.image.contains('@') || (c.image.contains(':') && !c.image.endsWith(':latest')))
+---
+apiVersion: policies.kyverno.io/v1beta1
+kind: ValidatingPolicy
+metadata:
+  name: require-resource-requests
+spec:
+  validationActions: [Audit]
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  matchConditions:
+    - name: skip-system-namespaces
+      expression: >-
+        !(object.metadata.namespace in ['kube-system', 'kube-public', 'kube-node-lease', 'gke-managed-system',
+        'kyverno', 'karpenter-system', 'istio-system', 'argocd', 'keda', 'observability'])
+  validations:
+    - message: "Every container must set CPU and memory requests (Karpenter and KEDA/HPA size on requests)."
+      expression: >-
+        object.spec.containers.all(c,
+          has(c.resources) && has(c.resources.requests) &&
+          'cpu' in c.resources.requests && 'memory' in c.resources.requests)
+---
+apiVersion: policies.kyverno.io/v1beta1
+kind: ValidatingPolicy
+metadata:
+  name: disallow-privileged-containers
+spec:
+  validationActions: [Audit]
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  matchConditions:
+    - name: skip-system-namespaces
+      expression: >-
+        !(object.metadata.namespace in ['kube-system', 'kube-public', 'kube-node-lease', 'gke-managed-system',
+        'kyverno', 'karpenter-system', 'istio-system', 'argocd', 'keda', 'observability'])
+  validations:
+    - message: "Privileged containers are not allowed."
+      expression: >-
+        object.spec.containers.all(c,
+          !has(c.securityContext) || !has(c.securityContext.privileged) || c.securityContext.privileged == false)

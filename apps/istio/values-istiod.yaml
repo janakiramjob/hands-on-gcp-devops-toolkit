@@ -1,0 +1,27 @@
+# istiod chart 1.30.8 - small lab sizing (chart defaults ask for 500m CPU / 2Gi per replica)
+autoscaleEnabled: false
+replicaCount: 1
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+global:
+  proxy:
+    # per-sidecar footprint
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+      limits:
+        memory: 256Mi
+
+meshConfig:
+  accessLogFile: /dev/stdout
+  enableTracing: true
+  # Uncomment after installing apps/otel to send spans to the collector:
+  # extensionProviders:
+  #   - name: otel
+  #     opentelemetry:
+  #       service: otel-agent.observability.svc.cluster.local
+  #       port: 4317

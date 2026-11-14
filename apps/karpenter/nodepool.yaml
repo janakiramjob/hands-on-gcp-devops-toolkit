@@ -1,0 +1,39 @@
+# Small-node NodePool: 2-8 vCPU machines from cheap families, hard-capped at 16 vCPU / 64 GiB in total.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    metadata:
+      labels:
+        workload: general
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.gcp
+        kind: GCENodeClass
+        name: default
+      requirements:
+        # Spot is much cheaper but can be reclaimed; drop "spot" for stable demos.
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        - key: karpenter.k8s.gcp/instance-family
+          operator: In
+          values: ["e2", "n2", "n4"]
+        - key: karpenter.k8s.gcp/instance-cpu
+          operator: Lt
+          values: ["9"]
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        # The cluster is zonal; Karpenter can only use zones the cluster is configured for.
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: ["us-east1-b"]   # = terraform var.zone
+  limits:
+    cpu: "16"
+    memory: 64Gi
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m

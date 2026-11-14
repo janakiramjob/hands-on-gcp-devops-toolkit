@@ -1,0 +1,95 @@
+# ONE public load balancer for everything, path-based.
+# It is the Istio ingress gateway (apps/istio/helmfile.yaml, release "istio-ingress"), so install Istio first.
+#   kubectl apply -f apps/ingress.yaml
+#   kubectl -n istio-ingress get svc istio-ingress      # EXTERNAL-IP = the load balancer address
+#
+#   http://<LB-IP>/grafana      -> Grafana       (monitoring)
+#   http://<LB-IP>/prometheus   -> Prometheus    (monitoring)
+#   http://<LB-IP>/argocd       -> Argo CD       (argocd)
+#   http://<LB-IP>/kiali        -> Kiali         (istio-system)
+#   http://<LB-IP>/otel/v1/traces (also /v1/metrics, /v1/logs) -> OTel agent OTLP/HTTP receiver (observability)
+#   http://<LB-IP>/             -> redirects to /grafana/
+#
+# Plain HTTP and public: set service.loadBalancerSourceRanges in apps/istio/values-gateway.yaml to your IP,
+# and put TLS in front before using this for anything real.
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: main
+  namespace: istio-ingress
+spec:
+  selector:
+    istio: ingress          # the gateway pods of release "istio-ingress"
+  servers:
+    - port: { number: 80, name: http, protocol: HTTP }
+      hosts: ["*"]
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: main
+  namespace: istio-ingress
+spec:
+  hosts: ["*"]
+  gateways: ["main"]
+  http:
+    - name: root
+      match:
+        - uri: { exact: / }
+      redirect:
+        uri: /grafana/
+
+    # Grafana serves itself under /grafana (serve_from_sub_path) -> forward the path unchanged
+    - name: grafana
+      match:
+        - uri: { prefix: /grafana }
+      route:
+        - destination:
+            host: kube-prometheus-stack-grafana.monitoring.svc.cluster.local
+            port: { number: 80 }
+
+    # Argo CD serves itself under /argocd (server.rootpath/basehref) -> forward unchanged
+    - name: argocd
+      match:
+        - uri: { prefix: /argocd }
+      route:
+        - destination:
+            host: argocd-server.argocd.svc.cluster.local
+            port: { number: 80 }
+
+    # Kiali serves itself under /kiali (server.web_root) -> forward unchanged
+    - name: kiali
+      match:
+        - uri: { prefix: /kiali }
+      route:
+        - destination:
+            host: kiali.istio-system.svc.cluster.local
+            port: { number: 20001 }
+
+    # OTLP over HTTP for telemetry from OUTSIDE the cluster (the collector has no UI). Strip /otel -> collector :4318.
+    # Anyone who can reach the load balancer can push telemetry: lock it down (source ranges / auth) before real use.
+    - name: otel-otlp-http
+      match:
+        - uri: { prefix: /otel/ }
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: otel-agent.observability.svc.cluster.local
+            port: { number: 4318 }
+
+    # Prometheus runs at "/" with an external URL of /prometheus/ -> strip the prefix before forwarding
+    - name: prometheus-trailing-slash
+      match:
+        - uri: { exact: /prometheus }
+      redirect:
+        uri: /prometheus/
+    - name: prometheus
+      match:
+        - uri: { prefix: /prometheus/ }
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: kube-prometheus-stack-prometheus.monitoring.svc.cluster.local
+            port: { number: 9090 }

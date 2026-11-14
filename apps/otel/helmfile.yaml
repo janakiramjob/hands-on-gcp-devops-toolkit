@@ -1,0 +1,25 @@
+# OpenTelemetry Collector as a node agent (DaemonSet).
+#   helmfile -f apps/otel/helmfile.yaml sync
+#   kubectl apply -f apps/otel/examples/telemetrygen.yaml     # sends 20 test spans
+#
+# Data flow (see values.yaml):
+#   apps --OTLP :4317/:4318--> otel-agent --metrics--> Prometheus (remote write)  --> Grafana
+#                                         --traces---> Tempo                      --> Grafana (Explore -> Tempo)
+#                                         --logs-----> collector's own log (debug exporter)
+# Install apps/monitoring first, otherwise the exporters have nothing to talk to.
+repositories:
+  - name: open-telemetry
+    url: https://open-telemetry.github.io/opentelemetry-helm-charts
+
+helmDefaults:
+  wait: true
+  timeout: 300
+  createNamespace: true
+
+releases:
+  - name: otel-agent
+    namespace: observability
+    chart: open-telemetry/opentelemetry-collector
+    version: 0.178.3
+    values:
+      - values.yaml

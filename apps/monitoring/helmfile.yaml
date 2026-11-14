@@ -1,0 +1,25 @@
+# Metrics + dashboards: Prometheus Operator, Prometheus, Grafana, kube-state-metrics, node-exporter.
+# (GKE's managed Prometheus is switched off in terraform, so this is the only Prometheus.)
+#   export GRAFANA_ADMIN_PASSWORD='choose-one'       # required, the UI is behind a public load balancer
+#   helmfile -f apps/monitoring/helmfile.yaml sync
+#   kubectl apply -f apps/monitoring/tempo.yaml      # trace storage for the OTel agent
+#
+# Grafana:    http://<LB-IP>/grafana      (user: admin)
+# Prometheus: http://<LB-IP>/prometheus   (through apps/ingress.yaml)
+repositories:
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+
+helmDefaults:
+  wait: true
+  timeout: 900
+  createNamespace: true
+
+releases:
+  - name: kube-prometheus-stack
+    namespace: monitoring
+    chart: prometheus-community/kube-prometheus-stack
+    version: 93.3.0
+    values:
+      - values.yaml
+      - values-secrets.yaml.gotmpl   # Grafana admin password from $GRAFANA_ADMIN_PASSWORD

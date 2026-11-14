@@ -1,0 +1,20 @@
+# GCP-specific node settings.
+apiVersion: karpenter.k8s.gcp/v1alpha1
+kind: GCENodeClass
+metadata:
+  name: default
+spec:
+  imageSelectorTerms:
+    - family: ContainerOptimizedOS
+      channel: cluster
+  # Same tag as the system pool, so the firewall rules from terraform
+  # (control plane -> webhooks, node <-> node) apply to Karpenter nodes too.
+  networkTags:
+    - gke-lab-node   # = terraform output network_tag (<cluster_name>-node)
+  labels:
+    managed-by: karpenter
+  kubeletConfiguration:
+    maxPods: 40
+  disks:
+    - sizeGiB: 30
+      boot: true

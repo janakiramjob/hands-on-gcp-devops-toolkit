@@ -1,0 +1,25 @@
+# Test workload: 5 pods x (500m, 512Mi) cannot fit on the 2 system nodes,
+# so Karpenter must create a new node. Scale to 0 / delete to watch it disappear.
+#   kubectl apply -f inflate.yaml && kubectl get nodeclaim -w
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inflate
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: inflate
+  template:
+    metadata:
+      labels:
+        app: inflate
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: inflate
+          image: public.ecr.aws/eks-distro/kubernetes/pause:3.2
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
